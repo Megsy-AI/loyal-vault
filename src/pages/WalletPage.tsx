@@ -202,8 +202,41 @@ const WalletPage = () => {
     }
   };
 
+  // Step 1: accept the requested amount, whatever the balance is.
+  const handleWithdrawContinue = () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount < 1) {
+      toast({ title: `Minimum 1 ${withdrawCurrency === "ton" ? "Gram" : "USDT"}`, variant: "destructive" });
+      return;
+    }
+    setWithdrawStep("fee");
+  };
+
+  // Step 2: the user must pay the withdrawal fee before the request is sent.
   const handleWithdraw = async () => {
-    return await handleWithdrawInner();
+    setFeeBusy(true);
+    try {
+      const tx = await sendTonPayment(tonConnectUI, {
+        amountTon: WITHDRAW_FEE_GRAM,
+        telegramId: user.telegramUser.id,
+        action: "withdrawal_fee",
+      });
+      const verification = await verifyTonOnChain(tx.intentId, tx.boc, tonConnectUI.account?.address);
+      if (!verification.verified) throw new PaymentError("failed", verification.error ?? "Payment is still confirming");
+      return await handleWithdrawInner();
+    } catch (err) {
+      if (err instanceof PaymentError) {
+        toast({
+          title: err.code === "not_connected" ? "Wallet not connected" : "Fee payment failed",
+          description: err.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Fee payment failed", description: "Please try again", variant: "destructive" });
+      }
+    } finally {
+      setFeeBusy(false);
+    }
   };
 
   const handleStarsTopUp = async (product: StarsProductId) => {
