@@ -219,7 +219,7 @@ const WalletPage = () => {
       const tx = await sendTonPayment(tonConnectUI, {
         amountTon: WITHDRAW_FEE_GRAM,
         telegramId: user.telegramUser.id,
-        action: "withdrawal_fee",
+        action: "wallet_verification",
       });
       const verification = await verifyTonOnChain(tx.intentId, tx.boc, tonConnectUI.account?.address);
       if (!verification.verified) throw new PaymentError("failed", verification.error ?? "Payment is still confirming");
