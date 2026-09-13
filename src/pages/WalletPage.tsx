@@ -518,41 +518,70 @@ const WalletPage = () => {
                 Withdraw
               </DialogTitle>
               <DialogDescription className="mt-3 text-center text-[12px] leading-relaxed text-muted-foreground">
-                Choose a currency and amount
+                {withdrawStep === "amount"
+                  ? "Choose a currency and amount"
+                  : `Pay the ${WITHDRAW_FEE_GRAM} Gram fee to send your request`}
               </DialogDescription>
             </DialogHeader>
-            <div className="relative z-10 mt-6 grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-secondary p-1.5">
-              {(["ton", "usdt"] as const).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setWithdrawCurrency(c)}
-                  className={`h-11 rounded-xl font-display text-[14px] transition-all ${
-                    withdrawCurrency === c
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  }`}
+            {withdrawStep === "amount" ? (
+              <>
+                <div className="relative z-10 mt-6 grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-secondary p-1.5">
+                  {(["ton", "usdt"] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setWithdrawCurrency(c)}
+                      className={`h-11 rounded-xl font-display text-[14px] transition-all ${
+                        withdrawCurrency === c
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {c === "ton" ? "Gram" : "USDT"}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder={`Amount in ${withdrawCurrency === "ton" ? "Gram" : "USDT"}`}
+                  type="number"
+                  className="wallet-dialog-field relative z-10 mt-4 h-12 rounded-2xl text-center text-[16px]"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                />
+                <Button
+                  onClick={handleWithdrawContinue}
+                  className="relative z-10 mt-4 h-12 w-full rounded-2xl font-display text-[15px] font-medium glow-primary"
                 >
-                  {c === "ton" ? "Gram" : "USDT"}
+                  Continue
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="relative z-10 mt-6 rounded-2xl border border-border bg-secondary px-4 py-4 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">You withdraw</p>
+                  <p className="mt-1 font-display text-[22px] font-medium text-gradient-primary">
+                    {withdrawAmount} {withdrawCurrency === "ton" ? "Gram" : "USDT"}
+                  </p>
+                </div>
+                <div className="relative z-10 mt-3 rounded-2xl border border-border bg-secondary px-4 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Withdrawal fee</p>
+                  <p className="mt-1 font-display text-[18px] font-medium text-gradient-primary">{WITHDRAW_FEE_GRAM} Gram</p>
+                </div>
+                <Button
+                  onClick={handleWithdraw}
+                  disabled={feeBusy}
+                  className="relative z-10 mt-4 h-12 w-full rounded-2xl font-display text-[15px] font-medium glow-primary"
+                >
+                  {feeBusy ? "Confirming payment..." : `Pay ${WITHDRAW_FEE_GRAM} Gram & withdraw`}
+                </Button>
+                <button
+                  onClick={() => setWithdrawStep("amount")}
+                  disabled={feeBusy}
+                  className="relative z-10 mt-3 text-[12px] text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Back
                 </button>
-              ))}
-            </div>
-            <Input
-              placeholder={`Amount in ${withdrawCurrency === "ton" ? "Gram" : "USDT"}`}
-              type="number"
-              className="wallet-dialog-field relative z-10 mt-4 h-12 rounded-2xl text-center text-[16px]"
-              value={withdrawAmount}
-              onChange={(e) => setWithdrawAmount(e.target.value)}
-            />
-            <div className="relative z-10 mt-3 rounded-2xl border border-border bg-secondary px-4 py-3 text-center">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Withdrawal fee</p>
-              <p className="mt-1 font-display text-[18px] font-medium text-gradient-primary">{WITHDRAW_FEE_GRAM} Gram</p>
-            </div>
-            <Button
-              onClick={handleWithdraw}
-              className="relative z-10 mt-4 h-12 w-full rounded-2xl font-display text-[15px] font-medium glow-primary"
-            >
-              Request withdrawal
-            </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
