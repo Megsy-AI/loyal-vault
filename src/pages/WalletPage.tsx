@@ -283,6 +283,7 @@ const WalletPage = () => {
     toast({ title: "Withdrawal Requested", description: `${amount} ${withdrawCurrency.toUpperCase()} submitted` });
     setWithdrawOpen(false);
     setWithdrawAmount("");
+    setWithdrawStep("amount");
   };
 
 
