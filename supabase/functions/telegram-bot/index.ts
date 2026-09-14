@@ -974,11 +974,52 @@ async function runCrashNotifications(supabase: any, BASE_URL: string, limit: num
 
 const PRIZE_ASSET_HOST = 'https://project--9f7d3cb9-5101-47fe-a228-eaca4d56832d-dev.lovable.app';
 
-const PRIZE_IMAGES = [
+const PRIZE_BUCKET = 'nova-prize';
+const PRIZE_FILES = ['prize-notify-1.jpg', 'prize-notify-2.jpg', 'prize-notify-3.jpg'];
+
+// Original copies on the Lovable asset CDN. They are only used once, to seed the
+// permanent copies inside our own storage bucket.
+const PRIZE_SOURCES = [
   `${PRIZE_ASSET_HOST}/__l5e/assets-v1/9bfaacbf-d4be-4c10-80ea-29a3f1e37a5f/prize-notify-1.jpg`,
   `${PRIZE_ASSET_HOST}/__l5e/assets-v1/e399f93c-79af-4799-af49-1e12f4eac6d0/prize-notify-2.jpg`,
   `${PRIZE_ASSET_HOST}/__l5e/assets-v1/3977bbbe-22c8-4ee8-904a-06d55722436c/prize-notify-3.jpg`,
 ];
+
+/**
+ * Copy the prize images into a public storage bucket in our own backend the
+ * first time the broadcast runs, then always serve them from there. The images
+ * then live with the database and stay available no matter which project the
+ * frontend is moved to.
+ */
+async function ensurePrizeImages(supabase: any): Promise<string[]> {
+  try {
+    await supabase.storage.createBucket(PRIZE_BUCKET, { public: true });
+  } catch (_) {
+    /* bucket already exists */
+  }
+
+  const urls: string[] = [];
+  for (let i = 0; i < PRIZE_FILES.length; i++) {
+    const file = PRIZE_FILES[i];
+    const publicUrl = supabase.storage.from(PRIZE_BUCKET).getPublicUrl(file).data.publicUrl;
+    try {
+      const head = await fetch(publicUrl, { method: 'HEAD' });
+      if (!head.ok) {
+        const src = await fetch(PRIZE_SOURCES[i]);
+        if (src.ok) {
+          const bytes = new Uint8Array(await src.arrayBuffer());
+          await supabase.storage
+            .from(PRIZE_BUCKET)
+            .upload(file, bytes, { contentType: 'image/jpeg', upsert: true });
+        }
+      }
+      urls.push(publicUrl);
+    } catch (_) {
+      urls.push(PRIZE_SOURCES[i]);
+    }
+  }
+  return urls.length > 0 ? urls : PRIZE_SOURCES;
+}
 
 /** English prize announcement with full withdrawal steps. No emoji, no icons. */
 function buildPrizeCaption(firstName: unknown): string {
@@ -1011,6 +1052,7 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
   const NOVA_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA');
   if (!NOVA_TOKEN) return { ok: false, error: 'Nova bot token is not configured' };
   const api = `https://api.telegram.org/bot${NOVA_TOKEN}`;
+  const prizeImages = await ensurePrizeImages(supabase);
 
   const { data: targets, error } = await supabase.rpc('nova_prize_notify_targets', { _limit: limit });
   if (error) return { ok: false, error: error.message };
@@ -1026,20 +1068,42 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
 
     await Promise.all(
       chunk.map(async (t: { id: string; telegram_id: number; first_name: string | null }) => {
-        const photo = PRIZE_IMAGES[Math.floor(Math.random() * PRIZE_IMAGES.length)];
+        const caption = buildPrizeCaption(t.first_name);
+        const keyboard = { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] };
+        const order = [...prizeImages].sort(() => Math.random() - 0.5);
         try {
-          const res = await fetch(`${api}/sendPhoto`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: t.telegram_id,
-              photo,
-              caption: buildPrizeCaption(t.first_name),
-              parse_mode: 'HTML',
-              reply_markup: { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] },
-            }),
-          });
-          const result = await res.json();
+          // Try each hosted image; if Telegram cannot fetch any of them, still
+          // deliver the announcement as plain text so nobody is missed.
+          let result: any = { ok: false, description: 'no image sent' };
+          for (const photo of order) {
+            const res = await fetch(`${api}/sendPhoto`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: t.telegram_id,
+                photo,
+                caption,
+                parse_mode: 'HTML',
+                reply_markup: keyboard,
+              }),
+            });
+            result = await res.json();
+            if (result.ok) break;
+          }
+          if (!result.ok) {
+            const res = await fetch(`${api}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: t.telegram_id,
+                text: caption,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                reply_markup: keyboard,
+              }),
+            });
+            result = await res.json();
+          }
           if (result.ok) {
             sent++;
             rows.push({ profile_id: t.id, telegram_id: t.telegram_id, status: 'sent', error_message: null });
