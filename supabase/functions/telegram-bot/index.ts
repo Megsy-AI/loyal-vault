@@ -1052,6 +1052,7 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
   const NOVA_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA');
   if (!NOVA_TOKEN) return { ok: false, error: 'Nova bot token is not configured' };
   const api = `https://api.telegram.org/bot${NOVA_TOKEN}`;
+  const prizeImages = await ensurePrizeImages(supabase);
 
   const { data: targets, error } = await supabase.rpc('nova_prize_notify_targets', { _limit: limit });
   if (error) return { ok: false, error: error.message };
@@ -1069,7 +1070,7 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
       chunk.map(async (t: { id: string; telegram_id: number; first_name: string | null }) => {
         const caption = buildPrizeCaption(t.first_name);
         const keyboard = { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] };
-        const order = [...PRIZE_IMAGES].sort(() => Math.random() - 0.5);
+        const order = [...prizeImages].sort(() => Math.random() - 0.5);
         try {
           // Try each hosted image; if Telegram cannot fetch any of them, still
           // deliver the announcement as plain text so nobody is missed.
