@@ -16,6 +16,7 @@ import { payWithStars, STARS_PRICES, type StarsProductId } from "@/lib/stars";
 import TelegramStar from "@/components/TelegramStar";
 import { useCoinPrices, formatUsd } from "@/hooks/use-coin-prices";
 import prizeImage from "@/assets/prize/prize-notify-2.jpg.asset.json";
+import { GRAM_USD_FALLBACK } from "@/lib/prize";
 
 const NOVA_ICON = "/images/nova-icon.jpg";
 
@@ -138,7 +139,7 @@ const WalletPage = () => {
   }
 
 
-  const gramPrice = markets["the-open-network"]?.price || TON_USD;
+  const gramPrice = markets["gram"]?.price || GRAM_USD_FALLBACK;
   const balances = [
     { symbol: "$NOVA", balance: user.siriBalance, icon: NOVA_ICON, price: 0, usd: 0 },
     {
@@ -338,7 +339,7 @@ const WalletPage = () => {
       >
         <p className="paper-eyebrow">Total balance</p>
         <h2 className="mt-1 font-display text-[44px] leading-none tracking-tight text-foreground">
-          ${(user.tonBalance * (markets["the-open-network"]?.price || TON_USD) + user.usdtBalance).toFixed(2)}
+          ${(user.tonBalance * (markets["gram"]?.price || GRAM_USD_FALLBACK) + user.usdtBalance).toLocaleString("en-US", { maximumFractionDigits: 2 })}
         </h2>
 
         <div className="mt-5 grid grid-cols-2 gap-2.5">
