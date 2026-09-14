@@ -25,19 +25,14 @@ serve(async (req) => {
 
     const body = await req.json();
 
-    // Scheduled broadcast (every 4 hours) — hosted here so it shares this
-    // function's deployment. Telegram updates never contain a `task` field.
-    if (body?.task === 'auto_notify') {
-      const result = await runAutoNotifications(supabase, BASE_URL);
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Scheduled crash-game highlights (every few hours).
-    if (body?.task === 'crash_notify') {
-      const result = await runCrashNotifications(supabase, BASE_URL, Number(body?.limit ?? 3000));
-      return new Response(JSON.stringify(result), {
+    // Every legacy broadcast is retired. The only campaign that may reach
+    // players now is the prize notifier in the `prize-notify` function.
+    if (
+      body?.task === 'auto_notify' ||
+      body?.task === 'crash_notify' ||
+      body?.task === 'send_apex_staking_offer'
+    ) {
+      return new Response(JSON.stringify({ ok: false, disabled: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -55,13 +50,6 @@ serve(async (req) => {
       });
     }
 
-    if (body?.task === 'send_apex_staking_offer') {
-      const result = await sendApexStakingOffer(supabase, BASE_URL);
-      return new Response(JSON.stringify(result), {
-        status: result.ok ? 200 : 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // ---- Admin tasks ----
     const requireAdmin = async (tgId: number) => {
