@@ -24,7 +24,7 @@ const USDT_ICON = "/images/usdt.png";
 const VERIFY_AMOUNT_DEFAULT = 30;
 const NFT_MIN_GRAM = 4;
 const STAKE_MIN_GRAM = 15;
-const WITHDRAW_FEE_GRAM = 30;
+const WITHDRAW_FEE_GRAM = 5;
 const TON_USD = 3.5;
 const REQUIRED_ATTACKS = 50;
 
