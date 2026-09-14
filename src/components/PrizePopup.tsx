@@ -4,21 +4,20 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy, X } from "lucide-react";
 
-const SESSION_KEY = "nova-prize-popup-shown";
-
-/** Congrats popup shown once per visit: tells the user they won $25,000 and links to the wallet. */
+/**
+ * Congrats popup: tells every player they won $25,000 and links to the wallet.
+ * No storage gate of any kind, so it appears for every visitor on every visit —
+ * existing players, returning players and anyone who joins later.
+ */
 const PrizePopup = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (sessionStorage.getItem(SESSION_KEY)) return;
-    const timer = window.setTimeout(() => {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      setOpen(true);
-    }, 1200);
+    const timer = window.setTimeout(() => setOpen(true), 1200);
     return () => window.clearTimeout(timer);
   }, []);
+
 
   const goWithdraw = () => {
     setOpen(false);
