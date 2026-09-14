@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /** Open-source market data (CoinGecko public API) for the coins we display. */
-export type CoinId = "the-open-network" | "tether" | "dogs-2" | "notcoin";
+export type CoinId = "the-open-network" | "tether" | "dogs-2" | "notcoin" | "gram";
 
 export interface CoinMarket {
   price: number;
@@ -9,12 +9,13 @@ export interface CoinMarket {
   change24h: number;
 }
 
-const IDS: CoinId[] = ["the-open-network", "tether", "dogs-2", "notcoin"];
+const IDS: CoinId[] = ["the-open-network", "tether", "dogs-2", "notcoin", "gram"];
 const ENDPOINT = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${IDS.join(",")}`;
-const CACHE_KEY = "coin-markets-v1";
+const CACHE_KEY = "coin-markets-v2";
 const TTL = 5 * 60 * 1000;
 
 const FALLBACK: Record<CoinId, CoinMarket> = {
+  gram: { price: 1.36, image: "/images/gram-icon.png", change24h: 0 },
   "the-open-network": { price: 0, image: "/images/gram-icon.png", change24h: 0 },
   tether: { price: 1, image: "/images/usdt.png", change24h: 0 },
   "dogs-2": { price: 0, image: "https://coin-images.coingecko.com/coins/images/39042/large/dogs.jpeg", change24h: 0 },
