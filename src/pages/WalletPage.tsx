@@ -15,7 +15,7 @@ import { creditDepositWithIntent, isWalletVerified, requestWithdrawal, verifyTon
 import { payWithStars, STARS_PRICES, type StarsProductId } from "@/lib/stars";
 import TelegramStar from "@/components/TelegramStar";
 import { useCoinPrices, formatUsd } from "@/hooks/use-coin-prices";
-import prizeImage from "@/assets/prize/prize-notify-2.jpg.asset.json";
+const prizeImage = { url: "/images/prize-notify-2.jpg" };
 import { GRAM_USD_FALLBACK } from "@/lib/prize";
 
 const NOVA_ICON = "/images/nova-icon.jpg";

@@ -3,7 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, X } from "lucide-react";
-import prizeImage from "@/assets/prize/prize-notify-1.jpg.asset.json";
+import { GRAM_USD_FALLBACK, prizeInGram } from "@/lib/prize";
+
+const prizeImage = { url: "/images/prize-notify-1.jpg" };
 
 /**
  * Congrats popup: tells every player they won $25,000 and links to the wallet.
@@ -53,6 +55,9 @@ const PrizePopup = () => {
           <h2 className="mt-2 font-display text-3xl text-foreground">Congratulations</h2>
           <p className="mt-1 text-sm text-muted-foreground">You won a prize worth</p>
           <p className="mt-2 font-display text-5xl leading-none text-gold">$25,000</p>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            {prizeInGram(GRAM_USD_FALLBACK).toLocaleString("en-US", { maximumFractionDigits: 2 })} GRAM
+          </p>
           <p className="mx-auto mt-4 max-w-[280px] text-xs leading-relaxed text-muted-foreground">
             Your reward is ready. Open your wallet and choose the amount you want to withdraw.
           </p>
