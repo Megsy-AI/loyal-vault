@@ -188,6 +188,7 @@ function RootComponent() {
             <Toaster />
             <AppProvider>
               <StarryBackground />
+              <PrizePopup />
               <div className="max-w-lg mx-auto relative z-10">
                 <Outlet />
                 <BottomNav />
