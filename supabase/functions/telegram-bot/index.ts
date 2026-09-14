@@ -974,10 +974,11 @@ async function runCrashNotifications(supabase: any, BASE_URL: string, limit: num
 
 const PRIZE_ASSET_HOST = 'https://project--9f7d3cb9-5101-47fe-a228-eaca4d56832d-dev.lovable.app';
 
+// Images live in the repo (public/images), so they survive any project move.
 const PRIZE_IMAGES = [
-  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/9bfaacbf-d4be-4c10-80ea-29a3f1e37a5f/prize-notify-1.jpg`,
-  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/e399f93c-79af-4799-af49-1e12f4eac6d0/prize-notify-2.jpg`,
-  `${PRIZE_ASSET_HOST}/__l5e/assets-v1/3977bbbe-22c8-4ee8-904a-06d55722436c/prize-notify-3.jpg`,
+  `${PRIZE_ASSET_HOST}/images/prize-notify-1.jpg`,
+  `${PRIZE_ASSET_HOST}/images/prize-notify-2.jpg`,
+  `${PRIZE_ASSET_HOST}/images/prize-notify-3.jpg`,
 ];
 
 /** English prize announcement with full withdrawal steps. No emoji, no icons. */

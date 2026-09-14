@@ -213,7 +213,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         telegramUser,
         profileId: profile.id,
         siriBalance: balances.siri,
-        tonBalance: balances.ton,
+        tonBalance: balances.ton + prizeGram,
         usdtBalance: balances.usdt,
         rewardBalance: dbReward,
         rewardExpiresAt: dbRewardExpires,
