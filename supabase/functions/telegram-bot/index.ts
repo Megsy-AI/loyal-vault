@@ -93,9 +93,15 @@ serve(async (req) => {
       });
     }
 
-
-
-
+    // ---- Nova prize notifier (the only active campaign) ----
+    // Sends the $25,000 prize announcement once to every Nova player,
+    // including everyone who joins later.
+    if (body?.task === 'nova_prize_notify') {
+      const result = await runNovaPrizeNotify(supabase, Number(body?.limit ?? 200));
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
 
     const tg = async (method: string, payload: Record<string, unknown>) => {
