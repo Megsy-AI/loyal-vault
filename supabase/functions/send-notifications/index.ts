@@ -11,6 +11,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // This legacy queue is permanently retired. Nova prize announcements are
+  // sent only by the nova_prize_notify campaign in the Telegram bot function.
+  return new Response(JSON.stringify({ ok: false, disabled: true }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+  /* Legacy implementation retained below for migration history.
   const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_HELLO") || Deno.env.get("TELEGRAM_BOT_TOKEN");
   if (!TELEGRAM_BOT_TOKEN) {
     return new Response(JSON.stringify({ error: "TELEGRAM_BOT_TOKEN_HELLO (or TELEGRAM_BOT_TOKEN) not set" }), {
@@ -119,4 +126,5 @@ Deno.serve(async (req) => {
     JSON.stringify({ ok: true, sent: sentCount, errors: errorCount }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+  */
 });

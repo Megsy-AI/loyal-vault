@@ -8,13 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Power, Lock, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Copy } from "lucide-react";
+import { Power, Lock, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Copy, ArrowLeft, WalletCards } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { PaymentError, sendTonPayment, TON_FEE_BUFFER } from "@/lib/ton";
 import { creditDepositWithIntent, isWalletVerified, requestWithdrawal, verifyTonOnChain, verifyWalletWithIntent } from "@/lib/game-api";
 import { payWithStars, STARS_PRICES, type StarsProductId } from "@/lib/stars";
 import TelegramStar from "@/components/TelegramStar";
 import { useCoinPrices, formatUsd } from "@/hooks/use-coin-prices";
+import prizeImage from "@/assets/prize/prize-notify-2.jpg.asset.json";
 
 const NOVA_ICON = "/images/nova-icon.jpg";
 
@@ -505,84 +506,106 @@ const WalletPage = () => {
       </Dialog>
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-        <DialogContent className="fixed bottom-auto left-1/2 right-auto top-1/2 w-[calc(100%-2rem)] max-w-[360px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[32px] border-0 bg-transparent p-0 shadow-none sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:max-w-[360px] sm:-translate-x-1/2 sm:-translate-y-1/2">
-          <div className="wallet-dialog-surface relative rounded-[32px] px-7 pb-8 pt-9 text-center">
-            <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-[32px] opacity-40"
-              style={{
-                background:
-                  "linear-gradient(180deg, hsl(0 0% 100% / 0.16) 0%, hsl(0 0% 100% / 0.05) 45%, transparent 100%)",
-              }}
-            />
-            <DialogHeader className="relative z-10">
-              <DialogTitle className="text-center text-[10px] font-normal uppercase tracking-[0.34em] text-muted-foreground">
-                Withdraw
-              </DialogTitle>
-              <DialogDescription className="mt-3 text-center text-[12px] leading-relaxed text-muted-foreground">
-                {withdrawStep === "amount"
-                  ? "Choose a currency and amount"
-                  : `Pay the ${WITHDRAW_FEE_GRAM} Gram fee to send your request`}
-              </DialogDescription>
-            </DialogHeader>
+        <DialogContent className="fixed bottom-auto left-1/2 right-auto top-1/2 w-[calc(100%-1.5rem)] max-w-[380px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-card p-0 shadow-2xl sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-1.5rem)] sm:max-w-[380px] sm:-translate-x-1/2 sm:-translate-y-1/2">
+          <div className="relative text-center">
+            <div className="relative aspect-[2/1] overflow-hidden">
+              <img src={prizeImage.url} alt="Nova withdrawal reward" className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+              <div className="absolute bottom-4 left-5 flex items-center gap-2 rounded-full bg-background/80 px-3 py-2 text-xs font-semibold text-foreground backdrop-blur-md">
+                <WalletCards className="h-4 w-4 text-primary" />
+                Secure withdrawal
+              </div>
+            </div>
+
+            <div className="px-5 pb-6 pt-3">
+              <DialogHeader>
+                <DialogTitle className="text-center font-display text-3xl text-foreground">
+                  {withdrawStep === "amount" ? "Withdraw funds" : "Confirm withdrawal"}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-center text-xs leading-relaxed text-muted-foreground">
+                  {withdrawStep === "amount"
+                    ? "Choose your currency, then enter the amount."
+                    : "Review the amount and pay the processing fee."}
+                </DialogDescription>
+              </DialogHeader>
             {withdrawStep === "amount" ? (
               <>
-                <div className="relative z-10 mt-6 grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-secondary p-1.5">
+                <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-border bg-secondary p-1">
                   {(["ton", "usdt"] as const).map((c) => (
-                    <button
+                    <Button
                       key={c}
+                      type="button"
+                      variant="ghost"
                       onClick={() => setWithdrawCurrency(c)}
-                      className={`h-11 rounded-xl font-display text-[14px] transition-all ${
+                      className={`h-10 rounded-lg text-sm font-semibold ${
                         withdrawCurrency === c
                           ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
                       {c === "ton" ? "Gram" : "USDT"}
-                    </button>
+                    </Button>
                   ))}
                 </div>
+                <label htmlFor="withdraw-amount" className="mt-4 block text-left text-xs font-medium text-muted-foreground">
+                  Amount to withdraw
+                </label>
                 <Input
+                  id="withdraw-amount"
                   placeholder={`Amount in ${withdrawCurrency === "ton" ? "Gram" : "USDT"}`}
                   type="number"
-                  className="wallet-dialog-field relative z-10 mt-4 h-12 rounded-2xl text-center text-[16px]"
+                  min="1"
+                  inputMode="decimal"
+                  className="wallet-dialog-field mt-2 h-14 rounded-xl text-center text-xl font-semibold"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                 />
                 <Button
                   onClick={handleWithdrawContinue}
-                  className="relative z-10 mt-4 h-12 w-full rounded-2xl font-display text-[15px] font-medium glow-primary"
+                  className="mt-4 h-13 w-full rounded-xl text-sm font-semibold glow-primary"
                 >
-                  Continue
+                  Withdraw
+                  <ArrowUpFromLine className="h-4 w-4" />
                 </Button>
               </>
             ) : (
               <>
-                <div className="relative z-10 mt-6 rounded-2xl border border-border bg-secondary px-4 py-4 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">You withdraw</p>
-                  <p className="mt-1 font-display text-[22px] font-medium text-gradient-primary">
-                    {withdrawAmount} {withdrawCurrency === "ton" ? "Gram" : "USDT"}
-                  </p>
+                <div className="mt-5 overflow-hidden rounded-xl border border-border bg-secondary text-left">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-4">
+                    <span className="text-xs text-muted-foreground">You withdraw</span>
+                    <span className="font-display text-xl text-foreground">
+                      {withdrawAmount} {withdrawCurrency === "ton" ? "Gram" : "USDT"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-4">
+                    <span className="text-xs text-muted-foreground">Processing fee</span>
+                    <span className="text-sm font-semibold text-gold">{WITHDRAW_FEE_GRAM} Gram</span>
+                  </div>
                 </div>
-                <div className="relative z-10 mt-3 rounded-2xl border border-border bg-secondary px-4 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Withdrawal fee</p>
-                  <p className="mt-1 font-display text-[18px] font-medium text-gradient-primary">{WITHDRAW_FEE_GRAM} Gram</p>
-                </div>
+                <p className="mt-3 text-left text-[11px] leading-relaxed text-muted-foreground">
+                  The fee is paid first. Your withdrawal request is submitted after payment confirms.
+                </p>
                 <Button
                   onClick={handleWithdraw}
                   disabled={feeBusy}
-                  className="relative z-10 mt-4 h-12 w-full rounded-2xl font-display text-[15px] font-medium glow-primary"
+                  className="mt-4 h-13 w-full rounded-xl text-sm font-semibold glow-primary"
                 >
-                  {feeBusy ? "Confirming payment..." : `Pay ${WITHDRAW_FEE_GRAM} Gram & withdraw`}
+                  {feeBusy ? "Confirming payment..." : `Pay ${WITHDRAW_FEE_GRAM} Gram and withdraw`}
+                  {!feeBusy && <ArrowUpFromLine className="h-4 w-4" />}
                 </Button>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
                   onClick={() => setWithdrawStep("amount")}
                   disabled={feeBusy}
-                  className="relative z-10 mt-3 text-[12px] text-muted-foreground underline-offset-4 hover:underline"
+                  className="mt-2 h-10 w-full gap-2 text-xs text-muted-foreground"
                 >
+                  <ArrowLeft className="h-4 w-4" />
                   Back
-                </button>
+                </Button>
               </>
             )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

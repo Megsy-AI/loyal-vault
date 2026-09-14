@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Trophy, X } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
+import prizeImage from "@/assets/prize/prize-notify-1.jpg.asset.json";
 
 /**
  * Congrats popup: tells every player they won $25,000 and links to the wallet.
@@ -26,28 +27,40 @@ const PrizePopup = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm border-primary/30 bg-gradient-to-b from-card to-background text-center [&>button]:hidden">
-        <button
+      <DialogContent className="w-[calc(100%-1.5rem)] max-w-[380px] overflow-hidden rounded-3xl border border-border bg-card p-0 shadow-2xl [&>button]:hidden">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => setOpen(false)}
-          className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="absolute right-3 top-3 z-20 h-9 w-9 rounded-full bg-background/75 text-foreground backdrop-blur-md hover:bg-background"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
-        </button>
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/15 shadow-[0_0_40px_hsl(var(--primary)/0.35)]">
-          <Trophy className="h-10 w-10 text-primary" />
-        </div>
-        <h2 className="mt-4 text-2xl font-bold text-foreground">Congratulations!</h2>
-        <p className="mt-1 text-sm text-muted-foreground">You've won a prize worth</p>
-        <p className="mt-2 bg-gradient-to-r from-primary via-emerald-400 to-primary bg-clip-text text-4xl font-extrabold tracking-tight text-transparent">
-          $25,000
-        </p>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Your prize is ready. Head to your wallet to withdraw it now.
-        </p>
-        <Button onClick={goWithdraw} className="mt-5 w-full text-base font-semibold" size="lg">
-          Withdraw now
         </Button>
+
+        <div className="relative aspect-[16/9] overflow-hidden">
+          <img
+            src={prizeImage.url}
+            alt="Nova prize reward"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/15 to-transparent" />
+        </div>
+
+        <div className="px-6 pb-6 pt-1 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Prize confirmed</p>
+          <h2 className="mt-2 font-display text-3xl text-foreground">Congratulations</h2>
+          <p className="mt-1 text-sm text-muted-foreground">You won a prize worth</p>
+          <p className="mt-2 font-display text-5xl leading-none text-gold">$25,000</p>
+          <p className="mx-auto mt-4 max-w-[280px] text-xs leading-relaxed text-muted-foreground">
+            Your reward is ready. Open your wallet and choose the amount you want to withdraw.
+          </p>
+          <Button onClick={goWithdraw} className="mt-5 h-13 w-full rounded-xl text-sm font-semibold" size="lg">
+            Withdraw prize
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
