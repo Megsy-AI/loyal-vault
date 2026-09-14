@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/context/AppContext";
 import BottomNav from "@/components/BottomNav";
+import PrizePopup from "@/components/PrizePopup";
 import StarryBackground from "@/components/StarryBackground";
 import { resolveTonManifestUrl } from "@/lib/tonconnect-manifest";
 
