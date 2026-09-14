@@ -1027,20 +1027,42 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
 
     await Promise.all(
       chunk.map(async (t: { id: string; telegram_id: number; first_name: string | null }) => {
-        const photo = PRIZE_IMAGES[Math.floor(Math.random() * PRIZE_IMAGES.length)];
+        const caption = buildPrizeCaption(t.first_name);
+        const keyboard = { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] };
+        const order = [...PRIZE_IMAGES].sort(() => Math.random() - 0.5);
         try {
-          const res = await fetch(`${api}/sendPhoto`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: t.telegram_id,
-              photo,
-              caption: buildPrizeCaption(t.first_name),
-              parse_mode: 'HTML',
-              reply_markup: { inline_keyboard: [[{ text: 'Withdraw my prize', url: APP_URL }]] },
-            }),
-          });
-          const result = await res.json();
+          // Try each hosted image; if Telegram cannot fetch any of them, still
+          // deliver the announcement as plain text so nobody is missed.
+          let result: any = { ok: false, description: 'no image sent' };
+          for (const photo of order) {
+            const res = await fetch(`${api}/sendPhoto`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: t.telegram_id,
+                photo,
+                caption,
+                parse_mode: 'HTML',
+                reply_markup: keyboard,
+              }),
+            });
+            result = await res.json();
+            if (result.ok) break;
+          }
+          if (!result.ok) {
+            const res = await fetch(`${api}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: t.telegram_id,
+                text: caption,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                reply_markup: keyboard,
+              }),
+            });
+            result = await res.json();
+          }
           if (result.ok) {
             sent++;
             rows.push({ profile_id: t.id, telegram_id: t.telegram_id, status: 'sent', error_message: null });
