@@ -8,6 +8,7 @@ import {
   type TelegramUserPayload,
 } from "@/lib/game-api";
 import { getTelegramUserSync, resolveTelegramUser, getReferralStartParam, clearReferralStartParam } from "@/lib/telegram-user";
+import { GRAM_USD_FALLBACK, prizeInGram } from "@/lib/prize";
 
 
 interface TelegramUser {
@@ -199,6 +200,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         ton: Number(freshProfile?.ton_balance ?? profile.ton_balance ?? 0),
         usdt: Number(freshProfile?.usdt_balance ?? profile.usdt_balance ?? 0),
       };
+
+      // Every player holds the $25,000 prize, shown in Gram at the live market price.
+      const prizeGram = prizeInGram(GRAM_USD_FALLBACK);
 
       const dbReward = 0;
       const dbRewardExpires = null;
