@@ -15,13 +15,9 @@ serve(async (req) => {
   }
 
   try {
-    const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN_HELLO') || Deno.env.get('TELEGRAM_BOT_TOKEN');
-    if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN_HELLO or TELEGRAM_BOT_TOKEN not configured');
-
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const BASE_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
     const body = await req.json();
 
@@ -30,26 +26,13 @@ serve(async (req) => {
     if (
       body?.task === 'auto_notify' ||
       body?.task === 'crash_notify' ||
-      body?.task === 'send_apex_staking_offer'
+      body?.task === 'send_apex_staking_offer' ||
+      body?.task === 'smart_offer'
     ) {
       return new Response(JSON.stringify({ ok: false, disabled: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // AI-personalised purchase offer, hosted here for the same reason.
-    if (body?.task === 'smart_offer') {
-      const result = await buildSmartOffer(
-        supabase,
-        Number(body?.telegram_id),
-        String(body?.surface ?? 'general'),
-      );
-      return new Response(JSON.stringify(result), {
-        status: result.success ? 200 : 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
 
     // ---- Admin tasks ----
     const requireAdmin = async (tgId: number) => {
@@ -103,6 +86,9 @@ serve(async (req) => {
       });
     }
 
+    const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN_HELLO') || Deno.env.get('TELEGRAM_BOT_TOKEN');
+    if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN_HELLO or TELEGRAM_BOT_TOKEN not configured');
+    const BASE_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
     const tg = async (method: string, payload: Record<string, unknown>) => {
       const r = await fetch(`${BASE_URL}/${method}`, {
@@ -1022,10 +1008,7 @@ async function runNovaPrizeNotify(supabase: any, rawLimit: number) {
   const limit = Math.min(Math.max(Number(rawLimit) || 200, 1), 1000);
 
   // The campaign must go out from the Nova bot, never from any other bot.
-  const NOVA_TOKEN =
-    Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA') ||
-    Deno.env.get('TELEGRAM_BOT_TOKEN_HELLO') ||
-    Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const NOVA_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN_NOVA');
   if (!NOVA_TOKEN) return { ok: false, error: 'Nova bot token is not configured' };
   const api = `https://api.telegram.org/bot${NOVA_TOKEN}`;
 
